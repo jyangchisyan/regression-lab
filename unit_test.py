@@ -2,6 +2,7 @@ import argparse
 import subprocess
 import sys
 import unittest
+import random
 
 import json
 from datetime import datetime, timezone
@@ -102,6 +103,8 @@ parser.add_argument(
     required=True,
     choices=scenarios,
 )
+
+parser.add_argument("--seed", type=int, default=0)
 args = parser.parse_args()
 
 scenario_id = args.scenario
@@ -111,11 +114,16 @@ defect_revealing_tests = scenario["revealing_tests"]
 
 records = []
 
-for label, tests, selection_seconds in [
+
+strategies = [
     ("A 全量", all_tests, 0.0),
     ("B 直接選取", direct_tests, direct_selection_seconds),
     ("C 擴大選取", expanded_tests, expanded_selection_seconds),
-]:
+]
+
+random.Random(args.seed).shuffle(strategies)
+
+for label, tests, selection_seconds in strategies:
     print(f"\n{label}", flush=True)
 
     suite = unittest.TestSuite(tests)
@@ -189,6 +197,8 @@ experiment = {
     "base_commit": revision,
     "tracked_diff": tracked_diff,
     "python_version": sys.version,
+    "order_seed": args.seed,
+    "strategy_order": [label for label, _, _ in strategies],
 }
 
 output_dir = Path("results")
