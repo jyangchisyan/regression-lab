@@ -157,6 +157,20 @@ for label, tests in [
         f"｜執行錯誤 {error_tests}"
     )
 
+revision = subprocess.run(
+    ["git", "rev-parse", "HEAD"],
+    check=True,
+    capture_output=True,
+    text=True,
+).stdout.strip()
+
+tracked_diff = subprocess.run(
+    ["git", "diff", "--binary", "HEAD", "--"],
+    check=True,
+    capture_output=True,
+    text=True,
+).stdout    
+
 experiment = {
     "recorded_at": datetime.now(timezone.utc).isoformat(),
     "changed_files": changed_files,
@@ -165,6 +179,9 @@ experiment = {
     "known_defect_id": "DEFECT-001",
     "scenario_id": scenario_id,
     "known_defect_id": known_defect_id,
+    "base_commit": revision,
+    "tracked_diff": tracked_diff,
+    "python_version": sys.version,
 }
 
 output_dir = Path("results")
