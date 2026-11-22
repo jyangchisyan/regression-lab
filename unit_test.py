@@ -1,3 +1,4 @@
+import argparse
 import subprocess
 import sys
 import unittest
@@ -71,11 +72,36 @@ def select_tests(changed_files, mapping):
 direct_tests = select_tests(changed_files, direct_map)
 expanded_tests = select_tests(changed_files, expanded_map)
 
-scenario_id = "temperature_threshold_too_low"
-known_defect_id = "DEFECT-002"
-defect_revealing_tests = {
-    TemperatureTests("test_temperature").id(),
+scenarios = {
+    "no_change": {
+        "defect_id": None,
+        "revealing_tests": set(),
+    },
+    "temperature_boundary_gt70": {
+        "defect_id": "DEFECT-001",
+        "revealing_tests": {FanTests("test_fan_at_70").id()},
+    },
+    "temperature_threshold_too_low": {
+        "defect_id": "DEFECT-002",
+        "revealing_tests": {
+            TemperatureTests("test_temperature").id(),
+        },
+    },
 }
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--scenario",
+    required=True,
+    choices=scenarios,
+)
+args = parser.parse_args()
+
+scenario_id = args.scenario
+scenario = scenarios[scenario_id]
+known_defect_id = scenario["defect_id"]
+defect_revealing_tests = scenario["revealing_tests"]
 
 records = []
 
