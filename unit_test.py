@@ -104,6 +104,7 @@ parser.add_argument(
     choices=scenarios,
 )
 
+parser.add_argument("--batch-id", required=True)
 parser.add_argument("--seed", type=int, default=0)
 args = parser.parse_args()
 
@@ -199,6 +200,7 @@ experiment = {
     "python_version": sys.version,
     "order_seed": args.seed,
     "strategy_order": [label for label, _, _ in strategies],
+    "batch_id": args.batch_id,
 }
 
 output_dir = Path("results")
