@@ -1,0 +1,64 @@
+{
+  "recorded_at": "2026-11-22T12:59:12.494519+00:00",
+  "changed_files": [
+    "temperature.py"
+  ],
+  "results": [
+    {
+      "strategy": "B 直接選取",
+      "status": "passed",
+      "tests_run": 1,
+      "failed_tests": [],
+      "error_tests": [],
+      "elapsed_seconds": 0.00016325000615324825,
+      "selection_ratio": 0.3333333333333333,
+      "reduction_ratio": 0.6666666666666667,
+      "detected_known_defect": false,
+      "selection_seconds": 1.649999467190355e-05,
+      "selection_and_execution_seconds": 0.0001797500008251518
+    },
+    {
+      "strategy": "C 擴大選取",
+      "status": "failed",
+      "tests_run": 2,
+      "failed_tests": [
+        "test_fan.FanTests.test_fan_at_70"
+      ],
+      "error_tests": [],
+      "elapsed_seconds": 0.0005728749965783209,
+      "selection_ratio": 0.6666666666666666,
+      "reduction_ratio": 0.33333333333333337,
+      "detected_known_defect": true,
+      "selection_seconds": 4.208006430417299e-06,
+      "selection_and_execution_seconds": 0.0005770830030087382
+    },
+    {
+      "strategy": "A 全量",
+      "status": "failed",
+      "tests_run": 3,
+      "failed_tests": [
+        "test_fan.FanTests.test_fan_at_70"
+      ],
+      "error_tests": [],
+      "elapsed_seconds": 0.0002966250031022355,
+      "selection_ratio": 1.0,
+      "reduction_ratio": 0.0,
+      "detected_known_defect": true,
+      "selection_seconds": 0.0,
+      "selection_and_execution_seconds": 0.0002966250031022355
+    }
+  ],
+  "scenario_id": "temperature_boundary_gt70",
+  "known_defect_id": "DEFECT-001",
+  "base_commit": "e843bbd11e129b359ed4eb05bf35ad29ef1a76f2",
+  "tracked_diff": "diff --git a/temperature.py b/temperature.py\nindex 61e5734..dd8a34a 100644\n--- a/temperature.py\n+++ b/temperature.py\n@@ -1,2 +1,2 @@\n def at_threshold(celsius):\n-    return celsius >= 70\n+    return celsius > 70\n",
+  "python_version": "3.14.3 (main, Feb  3 2026, 15:32:20) [Clang 17.0.0 (clang-1700.6.3.2)]",
+  "order_seed": 2,
+  "strategy_order": [
+    "B 直接選取",
+    "C 擴大選取",
+    "A 全量"
+  ],
+  "batch_id": "defect001-buffered-01",
+  "timing_mode": "buffered_report"
+}

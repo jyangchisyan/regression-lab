@@ -1,0 +1,61 @@
+{
+  "recorded_at": "2026-11-22T13:01:39.662201+00:00",
+  "changed_files": [
+    "temperature.py",
+    "unit_test.py"
+  ],
+  "results": [
+    {
+      "strategy": "B 直接選取",
+      "status": "passed",
+      "tests_run": 3,
+      "failed_tests": [],
+      "error_tests": [],
+      "elapsed_seconds": 0.00046533400018233806,
+      "selection_ratio": 1.0,
+      "reduction_ratio": 0.0,
+      "detected_known_defect": null,
+      "selection_seconds": 8.887500734999776e-05,
+      "selection_and_execution_seconds": 0.0005542090075323358
+    },
+    {
+      "strategy": "C 擴大選取",
+      "status": "passed",
+      "tests_run": 3,
+      "failed_tests": [],
+      "error_tests": [],
+      "elapsed_seconds": 0.00021174999710638076,
+      "selection_ratio": 1.0,
+      "reduction_ratio": 0.0,
+      "detected_known_defect": null,
+      "selection_seconds": 1.2707998394034803e-05,
+      "selection_and_execution_seconds": 0.00022445799550041556
+    },
+    {
+      "strategy": "A 全量",
+      "status": "passed",
+      "tests_run": 3,
+      "failed_tests": [],
+      "error_tests": [],
+      "elapsed_seconds": 0.00027299999783281237,
+      "selection_ratio": 1.0,
+      "reduction_ratio": 0.0,
+      "detected_known_defect": null,
+      "selection_seconds": 0.0,
+      "selection_and_execution_seconds": 0.00027299999783281237
+    }
+  ],
+  "scenario_id": "temperature_equivalent_change",
+  "known_defect_id": null,
+  "base_commit": "e843bbd11e129b359ed4eb05bf35ad29ef1a76f2",
+  "tracked_diff": "diff --git a/temperature.py b/temperature.py\nindex 61e5734..8b73707 100644\n--- a/temperature.py\n+++ b/temperature.py\n@@ -1,2 +1,2 @@\n def at_threshold(celsius):\n-    return celsius >= 70\n+    return 70 <= celsius\ndiff --git a/unit_test.py b/unit_test.py\nindex 7ba768d..a1337f4 100644\n--- a/unit_test.py\n+++ b/unit_test.py\n@@ -95,6 +95,10 @@ scenarios = {\n             TemperatureTests(\"test_temperature\").id(),\n         },\n     },\n+    \"temperature_equivalent_change\": {\n+    \"defect_id\": None,\n+    \"revealing_tests\": set(),\n+    },\n }\n \n \n",
+  "python_version": "3.14.3 (main, Feb  3 2026, 15:32:20) [Clang 17.0.0 (clang-1700.6.3.2)]",
+  "order_seed": 1,
+  "strategy_order": [
+    "B 直接選取",
+    "C 擴大選取",
+    "A 全量"
+  ],
+  "batch_id": "equivalent-buffered-01",
+  "timing_mode": "buffered_report"
+}

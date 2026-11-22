@@ -1,174 +1,194 @@
 # OpenBMC 變更導向回歸測試實作教學
 
-本專案是研究計畫「基於 OpenBMC 之變更導向回歸測試方法與效能評估」的 Python 入門實驗。目前尚未連接 OpenBMC 或 QEMU，先用小型案例理解測試選取、漏檢與安全回退。
+本專案對應研究計畫「基於 OpenBMC 之變更導向回歸測試方法與效能評估」。目前用 Python 小型案例練習，尚未連接 OpenBMC 或 QEMU。
 
-## 研究問題與目前進度
+## 目前完成的流程
 
-- RQ1：選取相關測試能否減少案例數與執行時間？目前已能記錄案例比例與耗時。
-- RQ2：縮減測試後是否漏檢？目前以一個刻意注入的門檻缺陷比較三種策略。
-- RQ3：歷史資訊能否改善排序？尚未實作。
+Git 變更 → 人工檔案與測試對應表 → 選取或回退全量 → 執行測試 → JSON 紀錄 → 單次、跨缺陷與批次分析。
 
-已完成：Git 差異讀取、人工對應表、去除重複測試、未知變更回退、無變更情境、JSON 紀錄與案例縮減率。後續才加入已知缺陷判定、跨情境分析與真實 OpenBMC 測試。
+已完成兩個已知缺陷、命令列情境、版本追溯、選取成本、可重現的隨機策略順序、批次識別與緩衝報告計時。歷史失敗資訊排序、真實 OpenBMC 測試與 CI 品質閘門尚未完成。
 
-## 檔案與執行環境
+## 環境與檔案
 
-需要 Python 3 與 Git；程式只使用標準函式庫。請在儲存庫根目錄操作。
+需要 Python 3 與 Git，只使用標準函式庫。在儲存庫根目錄執行指令。
 
 | 檔案 | 用途 |
 |---|---|
-| `temperature.py` | 正常規格為達到 70°C 就觸發，即 `>= 70` |
+| `temperature.py` | 基準規格：達到 70°C 即觸發，`celsius >= 70` |
 | `test_fan.py` | 驗證 70°C 應觸發 |
-| `unit_test.py` | 比較三種策略並寫入 JSON |
-| `examples/results/` | 教學過程留下的代表性原始紀錄 |
-| `results/` | 每次執行產生的本地結果，預設不提交 |
+| `unit_test.py` | 溫度／功率測試、三種策略、JSON 紀錄 |
+| `analyze_result.py` | 分析單份紀錄 |
+| `summarize_results.py` | 每個已知缺陷選一份紀錄，彙整檢出率 |
+| `analyze_batch.py` | 檢查同批 10 次紀錄並彙整時間 |
+| `examples/results/` | 已提交的教學原始數據 |
+| `results/` | 本地產生的紀錄，已忽略 |
 
-執行完整教學實驗請用：
+`unit_test.py` 不是預設 unittest discovery 的檔名，請直接執行本文件中的指令。
 
-```bash
-python3 unit_test.py
-```
+## 1. 三種測試策略
 
-`python3 -m unittest discover -v` 預設不會搜尋名稱為 `unit_test.py` 的檔案，因此不能代替上面的策略比較指令。
-
-## 1. 理解三種策略
-
-| 策略 | `temperature.py` 變更時選取 | 案例數 |
+| 策略 | 已知溫度檔案變更時選取 | 案例數 |
 |---|---|---:|
 | A 全量 | 溫度、風扇、功率 | 3 |
 | B 直接選取 | 溫度 | 1 |
 | C 擴大選取 | 溫度、風扇 | 2 |
 
-溫度測試只檢查 69°C；風扇測試檢查 70°C；功率測試驗證 12 × 2 = 24。這是人工設計的教學關聯，尚未從真實程式依賴自動推導。
+溫度測試只檢查 69°C，風扇測試檢查 70°C，功率測試檢查 12 × 2 = 24。這些是教學用人工對應，並非自動分析真實程式依賴。
 
-## 2. 無變更情境
+`select_tests()` 遇到未知檔案回退全量；已知檔案依對應表選取，以 `test.id()` 去重；沒有變更則選取零個測試。
 
-確認 `temperature.py` 內容為：
+## 2. 情境參數與 Git 基準
 
-```python
-def at_threshold(celsius):
-    return celsius >= 70
-```
+`--scenario` 指定紀錄及判定規則，**不會自動修改程式**。請先手動修改 `temperature.py`，其他教學程式則先提交成為穩定基準。
 
-儲存後執行：
+| 情境 | 函式回傳式 | 缺陷標籤 | A/B/C 執行數 | A/B/C 檢出 |
+|---|---|---|---|---|
+| `no_change` | `celsius >= 70` | `null` | 3/0/0 | 全為 `null` |
+| `temperature_boundary_gt70` | `celsius > 70` | DEFECT-001 | 3/1/2 | true/false/true |
+| `temperature_threshold_too_low` | `celsius >= 69` | DEFECT-002 | 3/1/2 | true/true/true |
+| `temperature_equivalent_change` | `70 <= celsius` | `null` | 3/1/2 | 全為 `null` |
+
+等價修改只就目前整數輸入而言。`no_change` 中 A 全部通過，B/C 為 `not_run`；零個測試不代表功能已驗證。等價修改則三種策略全部通過。
+
+確認變更：
 
 ```bash
 git diff --name-only HEAD --
-python3 unit_test.py
-```
-
-差異指令應沒有輸出。A 應執行 3 個且全部通過；B、C 應各執行 0 個，JSON 狀態為 `not_run`。不同 Python 版本可能顯示 `OK` 或 `NO TESTS RAN`，零個測試都不代表功能已驗證。
-
-程式的情境標籤目前寫死在 `experiment` 中。執行這個情境前，應將 `scenario_id` 設為 `no_change`、`known_defect_id` 設為 `None`。若修改已追蹤的 `unit_test.py`，它也會進入差異並觸發回退，因此先將這項情境設定獨立提交，再確認沒有差異。後續宜改用命令列參數，避免設定污染實驗差異。
-
-## 3. 注入門檻缺陷
-
-將 `temperature.py` 的 `>= 70` 改為 `> 70`，儲存但不要提交這個刻意注入的缺陷。確認情境標籤為 `temperature_boundary_gt70` 與 `DEFECT-001`；儲存庫提供的程式預設即為這組標籤。
-
-```bash
 git diff HEAD -- temperature.py
-git diff --name-only HEAD --
-python3 unit_test.py
 ```
 
-變更清單應只有 `temperature.py`。如果同時包含其他已追蹤檔案，先處理那些變更，否則會回退全量。
+除 `no_change` 應無差異外，其他情境應只有 `temperature.py`。差異指令包含已暫存及未暫存的已追蹤修改、已暫存新檔案，**不包含一般未追蹤檔案**。
 
-| 策略 | 執行數 | 結果 | 案例縮減率 |
-|---|---:|---|---:|
-| A 全量 | 3 | 風扇測試失敗，檢出缺陷 | 0% |
-| B 直接選取 | 1 | 通過，但漏檢 | 66.7% |
-| C 擴大選取 | 2 | 風扇測試失敗，檢出缺陷 | 33.3% |
-
-69°C 在兩種判斷中都回傳 `False`，所以 B 沒抓到問題。70°C 正好是此次修改影響的邊界，所以 A、C 能抓到問題。選中的測試全部通過，不等於沒有缺陷。
-
-## 4. 未知變更回退
-
-保持缺陷情境，建立一個未列於對應表的檔案：
+若 `unit_test.py` 等未知檔案也變更，B/C 都會回退全量。只提交已完成的教學程式，保留刻意注入的溫度修改，例如：
 
 ```bash
-printf '# Unknown path for the regression lab\n' > common.py
+git add unit_test.py
+git diff --cached --name-only
+git commit -m "Update experiment runner"
+```
+
+確認暫存區只有要提交的檔案。不要把缺陷一起提交，否則它會成為 `HEAD` 基準，不再列為變更。
+
+## 3. 單次缺陷實驗與 JSON 分析
+
+將回傳式改為 `celsius > 70`，執行：
+
+```bash
+python3 unit_test.py --scenario temperature_boundary_gt70 --seed 0 --batch-id defect001-single-01
+python3 analyze_result.py results/實際產生的檔名.json
+```
+
+DEFECT-001 影響 70°C 邊界，溫度測試只檢查 69°C，因此 B 通過卻漏檢。A/C 執行風扇測試而檢出。
+
+再將回傳式改為 `celsius >= 69`：
+
+```bash
+python3 unit_test.py --scenario temperature_threshold_too_low --seed 0 --batch-id defect002-single-01
+python3 analyze_result.py results/實際產生的檔名.json
+```
+
+DEFECT-002 讓 69°C 提早觸發，溫度測試會失敗，因此三種策略都檢出。
+
+檢出判定是 `failed_tests` 與該情境的 `revealing_tests` 是否有交集。這只適用於受控情境；一般失敗仍須確認根因。無已知缺陷時記為 `null`，不算漏檢。
+
+## 4. 未知變更回退與無變更驗證
+
+保持 DEFECT-001 修改。建立沒有重要內容的 `common.py`，再暫存：
+
+```bash
 git add common.py
-git diff --name-only HEAD --
-python3 unit_test.py
-```
-
-建立前請確認沒有需要保留的同名檔案。若檔案已存在，直接使用現有檔案，不要覆寫。
-
-預期差異包含 `common.py` 與 `temperature.py`。B、C 各印一次回退訊息，三種策略都跑 3 個測試且檢出風扇缺陷。這是在對應表不完整時保留全量測試範圍的保守策略。
-
-完成後只取消暫存：
-
-```bash
+python3 unit_test.py --scenario temperature_boundary_gt70 --seed 0 --batch-id fallback-01
 git restore --staged common.py
 ```
 
-檔案仍保留在本地，但成為未追蹤檔案，不再出現在目前的差異指令中。不要提交這個未知路徑實驗檔案。
+差異應包含 `common.py` 與 `temperature.py`；B/C 各印一次回退訊息，三種策略都執行 3 個並檢出缺陷。取消暫存後檔案仍保留。這種回退紀錄不要混入 3/1/2 的策略比較。
 
-## 5. 選取函式的原理
+再改回 `celsius >= 70`，確認差異清單為空：
 
-`direct_map` 與 `expanded_map` 以程式檔名對應測試物件。`select_tests()` 依序：
+```bash
+python3 unit_test.py --scenario no_change --seed 0 --batch-id no-change-01
+```
 
-1. 檢查變更檔案是否都在對應表中；有未知檔案就回傳全量。
-2. 收集已知檔案對應的測試，用 `test.id()` 去重。
-3. 沒有變更時回傳空清單。
+A 應 3 個全通過，B/C 應各 0 個。`--scenario` 本身不驗證你是否正確修改程式，須核對 Git 差異及結果。
 
-目前讀取的是 `git diff --name-only HEAD --`：包含暫存與未暫存的已追蹤差異，也包含已暫存的新檔案，但不包含一般未追蹤檔案。「差異清單為空」不等於工作目錄乾淨。
+## 5. 跨缺陷彙整
 
-提交會改變 `HEAD`。若將缺陷也提交，再對 `HEAD` 比較，缺陷就不會被當作變更；因此儲存庫保留正常基準，實驗時再修改。
+每個不同缺陷只選一份正確紀錄，且變更應只有 `temperature.py`：
 
-## 6. JSON 紀錄與解讀
+```bash
+python3 summarize_results.py results/缺陷1.json results/缺陷2.json
+```
 
-每次執行在 `results/` 新增以 UTC 時間命名的 JSON。
+| 策略 | 檢出缺陷數 | 已知缺陷檢出率 | 平均案例縮減率 |
+|---|---:|---:|---:|
+| A 全量 | 2/2 | 100.0% | 0.0% |
+| B 直接選取 | 1/2 | 50.0% | 66.7% |
+| C 擴大選取 | 2/2 | 100.0% | 33.3% |
 
-| 欄位 | 意義 |
+公式：選取比例＝執行數／全量案例數；案例縮減率＝1−選取比例；已知缺陷檢出率＝檢出缺陷數／不同已知缺陷總數。重跑同一缺陷不增加缺陷總數。
+
+## 6. 版本追溯與量測範圍
+
+JSON 包含 UTC `recorded_at`、`changed_files`、`scenario_id`、`known_defect_id`、`base_commit`、`tracked_diff`、`python_version`、`order_seed`、`strategy_order`、`batch_id`、`timing_mode`。
+
+每個策略包含 `status`、`tests_run`、`failed_tests`、`error_tests`、`detected_known_defect`、案例比例與以下時間：
+
+| 時間欄位 | 範圍 |
 |---|---|
-| `recorded_at` | UTC 紀錄時間 |
-| `changed_files` | Git 差異取得的路徑 |
-| `scenario_id` / `known_defect_id` | 人工指定的情境與缺陷標籤，非自動辨識 |
-| `status` | `passed`、`failed` 或 `not_run` |
-| `tests_run` | 實際執行案例數 |
-| `failed_tests` | 斷言失敗案例 |
-| `error_tests` | 執行發生例外的案例 |
-| `elapsed_seconds` | `perf_counter()` 量測的測試與報告輸出耗時 |
-| `selection_ratio` | 策略執行數 / 全量案例數 |
-| `reduction_ratio` | 1 − 選取比例 |
+| `selection_seconds` | 選取函式；A 記 0 表示不執行選取函式 |
+| `elapsed_seconds` | 測試框架執行與報告文字生成 |
+| `selection_and_execution_seconds` | 上述兩項相加，不是完整程序總時間 |
 
-目前固定有三個測試，比例假設測試正常跑完、沒有提早中止。浮點數如 `0.33333333333333337` 是正常表示，展示時可四捨五入。
+目前用 `io.StringIO()` 緩衝報告，計時結束後才輸出，`timing_mode` 為 `buffered_report`。終端機報告輸出不在執行計時內；Git 查詢、對應表建立、JSON 寫入也不在上述加總內。回退分支的選取函式本身會印訊息，選取成本仍包含那項輸出。
 
-代表性紀錄：
+舊版沒有 `timing_mode` 的批次以終端機輸出計時；新舊方式分開分析。失敗 traceback 的文字生成仍在計時內，故成功與失敗路徑的成本也不同。
 
-- [無變更](examples/results/20261122T091314046528Z.json)：較早版本，尚無比例及情境欄位。
-- [已知缺陷](examples/results/20261122T092105583992Z.json)：包含選取比例、縮減率及缺陷標籤。
+## 7. 重複實驗與隨機順序
 
-這些是當時的原始紀錄，沒有補寫當時尚未產生的欄位。
+`random.Random(seed).shuffle()` 決定策略執行順序，同 seed 可重現。順序可能重複，並不保證平衡。測試選取仍先 B 後 C；JSON `results` 順序會變，分析須依策略名稱辨識。
 
-## 7. 下一步：已知缺陷檢出欄位（尚未加入程式）
+保持 `celsius > 70`，建立一批新的 10 次紀錄：
 
-在 `records = []` 前加入：
-
-```python
-scenario_id = "temperature_boundary_gt70"
-known_defect_id = "DEFECT-001"
-defect_revealing_tests = {"test_fan.FanTests.test_fan_at_70"}
+```bash
+for seed in {0..9}; do
+  python3 unit_test.py --scenario temperature_boundary_gt70 --seed "$seed" --batch-id defect001-buffered-02
+done
+python3 analyze_batch.py --batch-id defect001-buffered-02
 ```
 
-在迴圈中取得 `failed_tests` 後計算：
+每次重收整批都改批次名稱。分析器要求 seed 0～9 各一份，同版本、同程式修改、同 Python 與計時方式，並核對情境預期及單一溫度檔案變更。
 
-```python
-detected_known_defect = (
-    bool(set(failed_tests) & defect_revealing_tests)
-    if known_defect_id is not None
-    else None
-)
+已收集的緩衝批次中位數為 A＝0.2671 ms、B＝0.1356 ms、C＝0.5156 ms。**案例減少不保證耗時下降**；微型實驗受框架、失敗報告與系統波動影響，不能據此宣稱真實系統加速。
+
+## 8. 全通過的等價修改比較
+
+將回傳式改成 `70 <= celsius`，其餘不動：
+
+```bash
+for seed in {0..9}; do
+  python3 unit_test.py --scenario temperature_equivalent_change --seed "$seed" --batch-id equivalent-buffered-02
+done
+python3 analyze_batch.py --batch-id equivalent-buffered-02
 ```
 
-將 `detected_known_defect` 加入每筆 `records`；`experiment` 的情境欄位改用上面的變數。缺陷情境預期 A/C 為 `true`、B 為 `false`；無缺陷時將 `known_defect_id` 設為 `None`，輸出為 `null`。
+預期三種策略都通過，案例數仍 3/1/2，檢出欄位全為 `null`。這是用來減少成功／失敗報告差異的正常情境，不能當成另一個缺陷加入檢出率分母。
 
-交集判斷只適用於目前受控缺陷；一般失敗還要確認根因，不能把任何失敗都算成這個缺陷。跨多個已知缺陷情境後，才以「檢出缺陷數 / 已知缺陷總數」計算檢出率。
+## 9. 重現既有數據
+
+`examples/results/` 保留舊版代表紀錄、兩個缺陷與三個完整批次，沒有補寫歷史欄位。
+
+```bash
+python3 summarize_results.py examples/results/20261122T125912262006Z.json examples/results/20261122T114003744543Z.json
+python3 analyze_batch.py --results-dir examples/results --batch-id defect001-repeat-01
+python3 analyze_batch.py --results-dir examples/results --batch-id defect001-buffered-01
+# 此舊批次預期被拒絕：包含 unit_test.py 變更，已回退為 3/3/3
+python3 analyze_batch.py --results-dir examples/results --batch-id equivalent-buffered-01
+```
+
+既有 `equivalent-buffered-01` 的差異包含 `temperature.py` 與 `unit_test.py`，實際為 3/3/3 全量回退。原始資料保留供稽核，但不納入等價情境的選取效能比較。待本次程式更新提交後，依第 8 節收集新批次。
 
 ## 研究限制與後續工作
 
-- 單一缺陷不能證明選取方法對其他缺陷有效。
-- 耗時極短且策略固定按 A/B/C 順序執行，不適合據此宣稱效能提升；需重複實驗並控制順序及環境。
-- 尚未記錄選取方法本身的執行成本，也未建立程式版本與測試版本的完整追溯資訊。
-- `unit_test.py` 尚無主程式保護，匯入也會執行實驗；腳本即使測試失敗仍可能回傳結束碼 0，尚不能直接當成 CI 品質閘門。
-- 後續先加入情境參數、結果分析與可靠的執行入口，再建立多缺陷資料集、歷史排序及 OpenBMC/Linux 實驗環境，視需求加入 QEMU。
+兩個人工缺陷不代表 OpenBMC 的整體檢出能力。後續需要更多獨立缺陷、穩定且較具代表性的工作負載、平衡執行順序與環境資訊，再評估統計差異。
+
+目前 Git 差異不記錄未追蹤檔案，版本追溯尚非完整環境封存。執行程式仍在匯入時執行，測試失敗也未轉成 CI 失敗結束碼；應先完善執行入口與錯誤處理，再接 CI。最後才延伸歷史測試排序、Linux/OpenBMC 模組與適合的 QEMU 驗證。

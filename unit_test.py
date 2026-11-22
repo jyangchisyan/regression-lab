@@ -95,6 +95,10 @@ scenarios = {
             TemperatureTests("test_temperature").id(),
         },
     },
+    "temperature_equivalent_change": {
+        "defect_id": None,
+        "revealing_tests": set(),
+    },
 }
 
 
@@ -156,7 +160,7 @@ for label, tests, selection_seconds in strategies:
         if known_defect_id is not None
         else None
     )
-    
+
     records.append({
         "strategy": label,
         "status": status,
@@ -168,7 +172,7 @@ for label, tests, selection_seconds in strategies:
         "reduction_ratio": 1 - result.testsRun / len(all_tests),
         "detected_known_defect": detected_known_defect,
         "selection_seconds": selection_seconds,
-"selection_and_execution_seconds": selection_seconds + elapsed,
+        "selection_and_execution_seconds": selection_seconds + elapsed,
     })
 
     print(
@@ -190,14 +194,12 @@ tracked_diff = subprocess.run(
     check=True,
     capture_output=True,
     text=True,
-).stdout    
+).stdout
 
 experiment = {
     "recorded_at": datetime.now(timezone.utc).isoformat(),
     "changed_files": changed_files,
     "results": records,
-    "scenario_id": "temperature_boundary_gt70",
-    "known_defect_id": "DEFECT-001",
     "scenario_id": scenario_id,
     "known_defect_id": known_defect_id,
     "base_commit": revision,
