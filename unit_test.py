@@ -3,6 +3,7 @@ import subprocess
 import sys
 import unittest
 import random
+import io
 
 import json
 from datetime import datetime, timezone
@@ -127,14 +128,18 @@ random.Random(args.seed).shuffle(strategies)
 for label, tests, selection_seconds in strategies:
     print(f"\n{label}", flush=True)
 
+    report = io.StringIO()
     suite = unittest.TestSuite(tests)
 
     started = perf_counter()
     result = unittest.TextTestRunner(
-        stream=sys.stdout,
+        stream=report,
         verbosity=2,
     ).run(suite)
     elapsed = perf_counter() - started
+
+    # 計時結束後才輸出報告
+    print(report.getvalue(), end="", flush=True)
 
     failed_tests = [test.id() for test, _ in result.failures]
     error_tests = [test.id() for test, _ in result.errors]
@@ -201,6 +206,7 @@ experiment = {
     "order_seed": args.seed,
     "strategy_order": [label for label, _, _ in strategies],
     "batch_id": args.batch_id,
+    "timing_mode": "buffered_report",
 }
 
 output_dir = Path("results")
