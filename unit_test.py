@@ -69,8 +69,14 @@ def select_tests(changed_files, mapping):
     return selected
 
 
+started = perf_counter()
 direct_tests = select_tests(changed_files, direct_map)
+direct_selection_seconds = perf_counter() - started
+
+started = perf_counter()
 expanded_tests = select_tests(changed_files, expanded_map)
+expanded_selection_seconds = perf_counter() - started
+
 
 scenarios = {
     "no_change": {
@@ -105,10 +111,10 @@ defect_revealing_tests = scenario["revealing_tests"]
 
 records = []
 
-for label, tests in [
-    ("A 全量", all_tests),
-    ("B 直接選取", direct_tests),
-    ("C 擴大選取", expanded_tests),
+for label, tests, selection_seconds in [
+    ("A 全量", all_tests, 0.0),
+    ("B 直接選取", direct_tests, direct_selection_seconds),
+    ("C 擴大選取", expanded_tests, expanded_selection_seconds),
 ]:
     print(f"\n{label}", flush=True)
 
@@ -147,7 +153,8 @@ for label, tests in [
         "selection_ratio": result.testsRun / len(all_tests),
         "reduction_ratio": 1 - result.testsRun / len(all_tests),
         "detected_known_defect": detected_known_defect,
-
+        "selection_seconds": selection_seconds,
+"selection_and_execution_seconds": selection_seconds + elapsed,
     })
 
     print(
