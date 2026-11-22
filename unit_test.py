@@ -71,6 +71,13 @@ def select_tests(changed_files, mapping):
 direct_tests = select_tests(changed_files, direct_map)
 expanded_tests = select_tests(changed_files, expanded_map)
 
+scenario_id = "temperature_boundary_gt70"
+known_defect_id = "DEFECT-001"
+
+# 這個已知缺陷預期會造成哪些測試斷言失敗
+defect_revealing_tests = {
+    "test_fan.FanTests.test_fan_at_70",
+}
 
 records = []
 
@@ -100,6 +107,12 @@ for label, tests in [
     else:
         status = "failed"
 
+    detected_known_defect = (
+        bool(set(failed_tests) & defect_revealing_tests)
+        if known_defect_id is not None
+        else None
+    )
+    
     records.append({
         "strategy": label,
         "status": status,
@@ -109,6 +122,8 @@ for label, tests in [
         "elapsed_seconds": elapsed,
         "selection_ratio": result.testsRun / len(all_tests),
         "reduction_ratio": 1 - result.testsRun / len(all_tests),
+        "detected_known_defect": detected_known_defect,
+
     })
 
     print(
@@ -124,6 +139,8 @@ experiment = {
     "results": records,
     "scenario_id": "temperature_boundary_gt70",
     "known_defect_id": "DEFECT-001",
+    "scenario_id": scenario_id,
+    "known_defect_id": known_defect_id,
 }
 
 output_dir = Path("results")
