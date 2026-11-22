@@ -71,12 +71,10 @@ def select_tests(changed_files, mapping):
 direct_tests = select_tests(changed_files, direct_map)
 expanded_tests = select_tests(changed_files, expanded_map)
 
-scenario_id = "temperature_boundary_gt70"
-known_defect_id = "DEFECT-001"
-
-# 這個已知缺陷預期會造成哪些測試斷言失敗
+scenario_id = "temperature_threshold_too_low"
+known_defect_id = "DEFECT-002"
 defect_revealing_tests = {
-    "test_fan.FanTests.test_fan_at_70",
+    TemperatureTests("test_temperature").id(),
 }
 
 records = []
