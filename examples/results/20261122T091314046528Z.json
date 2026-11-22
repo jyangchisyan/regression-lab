@@ -1,0 +1,30 @@
+{
+  "recorded_at": "2026-11-22T09:13:14.044117+00:00",
+  "changed_files": [],
+  "results": [
+    {
+      "strategy": "A 全量",
+      "status": "passed",
+      "tests_run": 3,
+      "failed_tests": [],
+      "error_tests": [],
+      "elapsed_seconds": 0.004448375009815209
+    },
+    {
+      "strategy": "B 直接選取",
+      "status": "not_run",
+      "tests_run": 0,
+      "failed_tests": [],
+      "error_tests": [],
+      "elapsed_seconds": 0.0015742090035928413
+    },
+    {
+      "strategy": "C 擴大選取",
+      "status": "not_run",
+      "tests_run": 0,
+      "failed_tests": [],
+      "error_tests": [],
+      "elapsed_seconds": 7.191700569819659e-05
+    }
+  ]
+}

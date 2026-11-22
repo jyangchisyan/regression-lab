@@ -1,0 +1,44 @@
+{
+  "recorded_at": "2026-11-22T09:21:05.583673+00:00",
+  "changed_files": [
+    "temperature.py"
+  ],
+  "results": [
+    {
+      "strategy": "A 全量",
+      "status": "failed",
+      "tests_run": 3,
+      "failed_tests": [
+        "test_fan.FanTests.test_fan_at_70"
+      ],
+      "error_tests": [],
+      "elapsed_seconds": 0.0009384589939145371,
+      "selection_ratio": 1.0,
+      "reduction_ratio": 0.0
+    },
+    {
+      "strategy": "B 直接選取",
+      "status": "passed",
+      "tests_run": 1,
+      "failed_tests": [],
+      "error_tests": [],
+      "elapsed_seconds": 7.6374999480322e-05,
+      "selection_ratio": 0.3333333333333333,
+      "reduction_ratio": 0.6666666666666667
+    },
+    {
+      "strategy": "C 擴大選取",
+      "status": "failed",
+      "tests_run": 2,
+      "failed_tests": [
+        "test_fan.FanTests.test_fan_at_70"
+      ],
+      "error_tests": [],
+      "elapsed_seconds": 0.00024724999093450606,
+      "selection_ratio": 0.6666666666666666,
+      "reduction_ratio": 0.33333333333333337
+    }
+  ],
+  "scenario_id": "temperature_boundary_gt70",
+  "known_defect_id": "DEFECT-001"
+}
