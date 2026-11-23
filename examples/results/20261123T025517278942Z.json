@@ -1,0 +1,60 @@
+{
+  "recorded_at": "2026-11-23T02:55:17.278643+00:00",
+  "changed_files": [
+    "temperature.py"
+  ],
+  "results": [
+    {
+      "strategy": "C 擴大選取",
+      "status": "passed",
+      "tests_run": 2,
+      "failed_tests": [],
+      "error_tests": [],
+      "elapsed_seconds": 0.00016883399803191423,
+      "selection_ratio": 0.6666666666666666,
+      "reduction_ratio": 0.33333333333333337,
+      "detected_known_defect": null,
+      "selection_seconds": 5.2919931476935744e-06,
+      "selection_and_execution_seconds": 0.0001741259911796078
+    },
+    {
+      "strategy": "A 全量",
+      "status": "passed",
+      "tests_run": 3,
+      "failed_tests": [],
+      "error_tests": [],
+      "elapsed_seconds": 0.00017220799054484814,
+      "selection_ratio": 1.0,
+      "reduction_ratio": 0.0,
+      "detected_known_defect": null,
+      "selection_seconds": 0.0,
+      "selection_and_execution_seconds": 0.00017220799054484814
+    },
+    {
+      "strategy": "B 直接選取",
+      "status": "passed",
+      "tests_run": 1,
+      "failed_tests": [],
+      "error_tests": [],
+      "elapsed_seconds": 5.1166003686375916e-05,
+      "selection_ratio": 0.3333333333333333,
+      "reduction_ratio": 0.6666666666666667,
+      "detected_known_defect": null,
+      "selection_seconds": 1.7166996258310974e-05,
+      "selection_and_execution_seconds": 6.833299994468689e-05
+    }
+  ],
+  "scenario_id": "temperature_equivalent_change",
+  "known_defect_id": null,
+  "base_commit": "0a576bfc7666345cff5a03f7e29641552ba6d506",
+  "tracked_diff": "diff --git a/temperature.py b/temperature.py\nindex 61e5734..8b73707 100644\n--- a/temperature.py\n+++ b/temperature.py\n@@ -1,2 +1,2 @@\n def at_threshold(celsius):\n-    return celsius >= 70\n+    return 70 <= celsius\n",
+  "python_version": "3.14.3 (main, Feb  3 2026, 15:32:20) [Clang 17.0.0 (clang-1700.6.3.2)]",
+  "order_seed": 7,
+  "strategy_order": [
+    "C 擴大選取",
+    "A 全量",
+    "B 直接選取"
+  ],
+  "batch_id": "equivalent-buffered-03",
+  "timing_mode": "buffered_report"
+}

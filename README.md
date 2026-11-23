@@ -6,7 +6,7 @@
 
 Git 變更 → 人工檔案與測試對應表 → 選取或回退全量 → 執行測試 → JSON 紀錄 → 單次、跨缺陷與批次分析。
 
-已完成兩個已知缺陷、命令列情境、版本追溯、選取成本、可重現的隨機策略順序、批次識別與緩衝報告計時。歷史失敗資訊排序、真實 OpenBMC 測試與 CI 品質閘門尚未完成。
+已完成兩個已知缺陷、命令列情境、版本追溯、選取成本、可重現的隨機策略順序、批次識別與緩衝報告計時，並已將實驗流程移入 `main()`。歷史失敗資訊排序、真實 OpenBMC 測試與 CI 品質閘門尚未完成。
 
 ## 環境與檔案
 
@@ -166,29 +166,79 @@ python3 analyze_batch.py --batch-id defect001-buffered-02
 
 ```bash
 for seed in {0..9}; do
-  python3 unit_test.py --scenario temperature_equivalent_change --seed "$seed" --batch-id equivalent-buffered-02
+  python3 unit_test.py --scenario temperature_equivalent_change --seed "$seed" --batch-id equivalent-buffered-04
 done
-python3 analyze_batch.py --batch-id equivalent-buffered-02
+python3 analyze_batch.py --batch-id equivalent-buffered-04
 ```
 
 預期三種策略都通過，案例數仍 3/1/2，檢出欄位全為 `null`。這是用來減少成功／失敗報告差異的正常情境，不能當成另一個缺陷加入檢出率分母。
 
 ## 9. 重現既有數據
 
-`examples/results/` 保留舊版代表紀錄、兩個缺陷與三個完整批次，沒有補寫歷史欄位。
+`examples/results/` 保留舊版代表紀錄、兩個缺陷與四個完整批次，沒有補寫歷史欄位。
 
 ```bash
 python3 summarize_results.py examples/results/20261122T125912262006Z.json examples/results/20261122T114003744543Z.json
 python3 analyze_batch.py --results-dir examples/results --batch-id defect001-repeat-01
 python3 analyze_batch.py --results-dir examples/results --batch-id defect001-buffered-01
+python3 analyze_batch.py --results-dir examples/results --batch-id equivalent-buffered-03
 # 此舊批次預期被拒絕：包含 unit_test.py 變更，已回退為 3/3/3
 python3 analyze_batch.py --results-dir examples/results --batch-id equivalent-buffered-01
 ```
 
-既有 `equivalent-buffered-01` 的差異包含 `temperature.py` 與 `unit_test.py`，實際為 3/3/3 全量回退。原始資料保留供稽核，但不納入等價情境的選取效能比較。待本次程式更新提交後，依第 8 節收集新批次。
+既有 `equivalent-buffered-01` 的差異包含 `temperature.py` 與 `unit_test.py`，實際為 3/3/3 全量回退。原始資料保留供稽核，但不納入等價情境的選取效能比較。後續的 `equivalent-buffered-03` 已正確收集 10 次且每次為 3/1/2，可用於正常情境的時間描述。
+
+## 10. 執行入口重構
+
+原本匯入 `unit_test.py` 就會讀取 Git、解析參數、執行測試並寫檔。現在測試類別與 `select_tests()` 留在模組層級，實驗流程放進：
+
+```python
+def main():
+    # Git 差異、測試與對應表建立、參數解析、選取、執行、JSON 寫入
+    ...
+
+if __name__ == "__main__":
+    main()
+```
+
+`select_tests(changed_files, mapping, all_tests)` 明確接收全量清單，不再依賴全域的實驗物件。重構保留 CLI 參數、紀錄格式、計時範圍及策略行為。
+
+驗證匯入：
+
+```bash
+python3 -c "import unit_test; print('匯入完成，未執行實驗')"
+```
+
+匯入不應印變更、跑測試或新增 JSON。命令列執行仍依前述指令操作。重構前後已在隔離環境比較四種情境與未知變更回退，除時間與版本資訊外結果一致。
+
+## 11. 批次重複問題排查
+
+若分析出現「此批次必須恰有 10 份紀錄，seed 各為 0～9」，通常是資料缺漏或同批次名稱被重複使用。曾觀察到本地 `equivalent-buffered-01` 累積 20 份、`equivalent-buffered-02` 累積 40 份；這些混合批次不能直接分析。不要挑出較快的紀錄或覆寫舊數據來湊滿 10 份。
+
+保留舊紀錄，以未用過的 `batch_id` 重新收集。每批只執行一次 seed 0～9 的迴圈；分析指令可以重複執行，不會新增紀錄。收集前先確認教學程式已提交、Git 差異只有 `temperature.py`。
+
+## 12. 正常情境的新批次結果
+
+`equivalent-buffered-03` 包含 seed 0～9 各一次，三種策略全部通過，檢出欄位全為 `null`。
+
+| 策略 | 中位數 ms | 最小 ms | 最大 ms |
+|---|---:|---:|---:|
+| A 全量 | 0.1496 | 0.0918 | 0.2347 |
+| B 直接選取 | 0.1373 | 0.0568 | 0.2200 |
+| C 擴大選取 | 0.1324 | 0.0623 | 0.3594 |
+
+以中位數描述，B 比 A 低約 8.2%，C 比 A 低約 11.5%。這不是統計顯著性結論；其他批次曾觀察到 C 高於 A，且本批次範圍也高度重疊，因此尚未證明穩定的耗時優勢。最大／最小值不是信賴區間。
+
+## 13. 什麼是「微型功能示範」
+
+目前僅有一個溫度比較函式、三個測試、兩個人工門檻缺陷，以及人工設定的檔案與測試關聯。這個刻意簡化的程式，是用來理解研究方法的小型示範。
+
+它已證明流程能串接，並能展示選取如何漏檢、回退及記錄結果；它尚不能代表實際 OpenBMC 工作負載。一次比較或乘法極短，測試框架與報告成本可能占很大比例。
+
+接下來應擴充感測器資料解析、風扇控制規則、事件紀錄等具有實際行為的模組與測試，再移到真正 OpenBMC 模組。不要單純加入 `sleep()` 製造加速。評估時須同時回答是否避開無關測試、是否漏檢，以及節省成本是否足以抵銷選取成本。
 
 ## 研究限制與後續工作
 
 兩個人工缺陷不代表 OpenBMC 的整體檢出能力。後續需要更多獨立缺陷、穩定且較具代表性的工作負載、平衡執行順序與環境資訊，再評估統計差異。
 
-目前 Git 差異不記錄未追蹤檔案，版本追溯尚非完整環境封存。執行程式仍在匯入時執行，測試失敗也未轉成 CI 失敗結束碼；應先完善執行入口與錯誤處理，再接 CI。最後才延伸歷史測試排序、Linux/OpenBMC 模組與適合的 QEMU 驗證。
+目前 Git 差異不記錄未追蹤檔案，版本追溯尚非完整環境封存。執行入口已完成重構；測試失敗仍未轉成 CI 失敗結束碼，應先完善錯誤處理再接 CI。最後才延伸歷史測試排序、Linux/OpenBMC 模組與適合的 QEMU 驗證。

@@ -1,0 +1,60 @@
+{
+  "recorded_at": "2026-11-23T02:55:17.486438+00:00",
+  "changed_files": [
+    "temperature.py"
+  ],
+  "results": [
+    {
+      "strategy": "A 全量",
+      "status": "passed",
+      "tests_run": 3,
+      "failed_tests": [],
+      "error_tests": [],
+      "elapsed_seconds": 0.000234708990319632,
+      "selection_ratio": 1.0,
+      "reduction_ratio": 0.0,
+      "detected_known_defect": null,
+      "selection_seconds": 0.0,
+      "selection_and_execution_seconds": 0.000234708990319632
+    },
+    {
+      "strategy": "C 擴大選取",
+      "status": "passed",
+      "tests_run": 2,
+      "failed_tests": [],
+      "error_tests": [],
+      "elapsed_seconds": 9.908400534186512e-05,
+      "selection_ratio": 0.6666666666666666,
+      "reduction_ratio": 0.33333333333333337,
+      "detected_known_defect": null,
+      "selection_seconds": 4.791989340446889e-06,
+      "selection_and_execution_seconds": 0.00010387599468231201
+    },
+    {
+      "strategy": "B 直接選取",
+      "status": "passed",
+      "tests_run": 1,
+      "failed_tests": [],
+      "error_tests": [],
+      "elapsed_seconds": 4.633299249690026e-05,
+      "selection_ratio": 0.3333333333333333,
+      "reduction_ratio": 0.6666666666666667,
+      "detected_known_defect": null,
+      "selection_seconds": 1.7333004507236183e-05,
+      "selection_and_execution_seconds": 6.366599700413644e-05
+    }
+  ],
+  "scenario_id": "temperature_equivalent_change",
+  "known_defect_id": null,
+  "base_commit": "0a576bfc7666345cff5a03f7e29641552ba6d506",
+  "tracked_diff": "diff --git a/temperature.py b/temperature.py\nindex 61e5734..8b73707 100644\n--- a/temperature.py\n+++ b/temperature.py\n@@ -1,2 +1,2 @@\n def at_threshold(celsius):\n-    return celsius >= 70\n+    return 70 <= celsius\n",
+  "python_version": "3.14.3 (main, Feb  3 2026, 15:32:20) [Clang 17.0.0 (clang-1700.6.3.2)]",
+  "order_seed": 9,
+  "strategy_order": [
+    "A 全量",
+    "C 擴大選取",
+    "B 直接選取"
+  ],
+  "batch_id": "equivalent-buffered-03",
+  "timing_mode": "buffered_report"
+}
